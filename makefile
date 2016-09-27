@@ -10,7 +10,7 @@ COMPILE_RELEASE = $(LINK_RElEASE) -D RELEASE
 CC = gcc
 
 # Object file names
-OBJECTS = main.o selfsquared.o
+OBJECTS = main.o selfsquared.o Font.o
 BMPS = 540x20Font.bmp
 
 # SDL2 paths
