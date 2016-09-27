@@ -14,11 +14,6 @@ static inline uint16_t getIterations(double zx0, double zy0, double cx0, double 
     uint16_t iterations = 1;
     double xtemp;
 
-    if ( cx0 < 0.5 && cx0 > -0.5 && cy0 < 0.5 && cy0 > -0.5 )
-    {
-        int breakme = 5;
-    }
-    
     while (zx0 * zx0 + zy0 * zy0 < 2 * 2 && iterations < max) {
         xtemp = zx0;
         zx0 = zx0 * zx0 - zy0 * zy0 + cx0;
@@ -96,7 +91,7 @@ void PlotMandelbrot( uint16_t* buf, uint16_t w, uint16_t h,
 }
 
 
-void PlotJuliaF( complex double c, uint16_t* buf, size_t elsize, int pitch, uint16_t w, uint16_t h,
+void PlotJuliaF( complex double c, void* buf, size_t elsize, int pitch, uint16_t w, uint16_t h,
                  complex double upperleft, complex double lowerright, uint16_t* maxiter,
                  PlotFunction func )
 {
@@ -115,9 +110,9 @@ void PlotJuliaF( complex double c, uint16_t* buf, size_t elsize, int pitch, uint
     double yi = cimag( upperleft );
     double yf = cimag( lowerright );
 
-    double dx = xf - xi;
-    double dy = yf - yi;
-
+    double dx = (xf - xi) / (double)w;
+    double dy = (yf - yi) / (double)h;
+    
     double x = xi;
     double y = yi;
 
@@ -131,6 +126,7 @@ void PlotJuliaF( complex double c, uint16_t* buf, size_t elsize, int pitch, uint
             (*func)( getIterations( x, y, cx0, cy0, realmax ), buf );
             buf += elsize;
         }
+        x = xi;
         buf += dypixels;
     }
 }

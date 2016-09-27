@@ -21,7 +21,7 @@ void PlotJulia( complex double c, uint16_t* buf, uint16_t w, uint16_t h,
 void PlotMandelbrot( uint16_t* buf, uint16_t w, uint16_t h,
                      complex double upperleft, complex double lowerright, uint16_t* maxiter );
 
-void PlotJuliaF( complex double c, uint16_t* buf, size_t elsize, int pitch, uint16_t w, uint16_t h,
+void PlotJuliaF( complex double c, void* buf, size_t elsize, int pitch, uint16_t w, uint16_t h,
                  complex double upperleft, complex double lowerright, uint16_t* maxiter,
                  PlotFunction func );
 
