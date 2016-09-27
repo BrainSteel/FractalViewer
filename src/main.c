@@ -26,10 +26,20 @@
 
 SDL_PixelFormat* texfmt;
 
+double logmax;
+double dc;
+
+void LogPlotter( uint16_t iterations, void* copyloc )
+{
+    Uint32* pix = copyloc;
+    double logit = log( iterations );
+    *pix = SDL_MapRGB( texfmt, 0, 0, logit * dc );
+}
+
 void Plotter( uint16_t iterations, void* copyloc )
 {
     Uint32* pix = copyloc;
-    *pix = SDL_MapRGB( texfmt, iterations, iterations, iterations );
+    *pix = SDL_MapRGB( texfmt, 0, 0, iterations );
 }
 
 int main( int argc, char** argv )
@@ -61,6 +71,8 @@ int main( int argc, char** argv )
     Uint32* pixels;
     int pitch;
     uint16_t maxiter = 255;
+    logmax = log( maxiter );
+    dc = 255 / logmax;
 
     SDL_LockTexture( fractex, NULL, (void**)&pixels, &pitch );
     PlotMandelbrotF( pixels, 4, pitch, SCREEN_WIDTH, SCREEN_HEIGHT,
@@ -76,6 +88,18 @@ int main( int argc, char** argv )
 #define MODE_JULIA 1
 
     int current_mode = MODE_MANDELBROT;
+
+    double remin = RE_MIN_MANDELBROT;
+    double remax = RE_MAX_MANDELBROT;
+    double immin = IM_MIN_MANDELBROT;
+    double immax = IM_MAX_MANDELBROT;
+
+    int replot = 1;
+
+    double complex c = 0;
+
+    PlotFunction plotter = Plotter;
+
     // Wait for the user to quit.
     SDL_Event event;
     do
@@ -83,28 +107,104 @@ int main( int argc, char** argv )
         SDL_WaitEvent( &event );
         if ( event.type == SDL_MOUSEBUTTONDOWN )
         {
-            SDL_LockTexture( fractex, NULL, (void**)&pixels, &pitch );
             if ( current_mode == MODE_MANDELBROT )
             {
-                double scalex = (RE_MAX_MANDELBROT - RE_MIN_MANDELBROT) / SCREEN_WIDTH;
-                double scaley = (IM_MAX_MANDELBROT - IM_MIN_MANDELBROT) / SCREEN_HEIGHT;
-                double adjustx = event.button.x * scalex + RE_MIN_MANDELBROT;
-                double adjusty = event.button.y * scaley + IM_MIN_MANDELBROT;
-                PlotJuliaF( adjustx + adjusty * I, pixels, 4, pitch, SCREEN_WIDTH, SCREEN_HEIGHT,
-                            RE_MIN_JULIA + IM_MIN_JULIA * I,
-                            RE_MAX_JULIA + IM_MAX_JULIA * I, &maxiter, Plotter );
                 current_mode = MODE_JULIA;
+
+                double scalex = (remax - remin) / SCREEN_WIDTH;
+                double scaley = (immax - immin) / SCREEN_HEIGHT;
+                double adjustx = event.button.x * scalex + remin;
+                double adjusty = event.button.y * scaley + immin;
+                c = adjustx + adjusty * I;
+
+                remin = RE_MIN_JULIA;
+                remax = RE_MAX_JULIA;
+                immin = IM_MIN_JULIA;
+                immax = IM_MAX_JULIA;
+
+                replot = 1;
+            }
+            else
+            {
+                current_mode = MODE_MANDELBROT;
+
+                remin = RE_MIN_MANDELBROT;
+                remax = RE_MAX_MANDELBROT;
+                immin = IM_MIN_MANDELBROT;
+                immax = IM_MAX_MANDELBROT;
+
+                replot = 1;
+            }
+        }
+        else if ( event.type == SDL_KEYDOWN )
+        {
+            int mousex, mousey;
+            SDL_GetMouseState( &mousex, &mousey );
+
+            #define ZOOM_RATIO 0.5
+            if ( event.key.keysym.sym == SDLK_z )
+            {
+                double scalex = (remax - remin) / SCREEN_WIDTH;
+                double scaley = (immax - immin) / SCREEN_HEIGHT;
+                double adjustx = mousex * scalex + remin;
+                double adjusty = mousey * scaley + immin;
+
+                remin = remin + (adjustx - remin) * ZOOM_RATIO;
+                remax = remax - (remax - adjustx) * ZOOM_RATIO;
+                immin = immin + (adjusty - immin) * ZOOM_RATIO;
+                immax = immax - (immax - adjusty) * ZOOM_RATIO;
+            }
+            else if ( event.key.keysym.sym == SDLK_o )
+            {
+                if ( current_mode == MODE_JULIA )
+                {
+                    remin = RE_MIN_JULIA;
+                    remax = RE_MAX_JULIA;
+                    immin = IM_MIN_JULIA;
+                    immax = IM_MAX_JULIA;
+                }
+                else
+                {
+                    remin = RE_MIN_MANDELBROT;
+                    remax = RE_MAX_MANDELBROT;
+                    immin = IM_MIN_MANDELBROT;
+                    immax = IM_MAX_MANDELBROT;
+                }
+                replot = 1;
+            }
+            else if ( event.key.keysym.sym == SDLK_l )
+            {
+                if ( plotter == LogPlotter )
+                {
+                    plotter = Plotter;
+                }
+                else
+                {
+                    plotter = LogPlotter;
+                }
+                replot = 1;
+            }
+
+            replot = 1;
+        }
+
+        if (replot)
+        {
+            SDL_LockTexture( fractex, NULL, (void**)&pixels, &pitch );
+            if ( current_mode == MODE_JULIA )
+            {
+                PlotJuliaF( c, pixels, 4, pitch, SCREEN_WIDTH, SCREEN_HEIGHT,
+                            remin + immin * I, remax + immax * I, &maxiter, plotter );
             }
             else
             {
                 PlotMandelbrotF( pixels, 4, pitch, SCREEN_WIDTH, SCREEN_HEIGHT,
-                                 RE_MIN_MANDELBROT + IM_MIN_MANDELBROT * I,
-                                 RE_MAX_MANDELBROT + IM_MAX_MANDELBROT * I, &maxiter, Plotter );
-                current_mode = MODE_MANDELBROT;
+                                 remin + immin * I, remax + immax * I, &maxiter, plotter );
             }
             SDL_UnlockTexture( fractex );
             SDL_RenderCopy( winrend, fractex, NULL, NULL );
             SDL_RenderPresent( winrend );
+            replot = 0;
         }
     } while ( event.type != SDL_QUIT );
 
